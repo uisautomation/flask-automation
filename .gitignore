@@ -1,0 +1,11 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+
+# Pycharm files
+.idea/
+
+.DS_Store
+venv/**
+dist/**
+flask_automation.egg-info/**
