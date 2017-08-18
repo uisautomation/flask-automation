@@ -1,6 +1,11 @@
 django-automationcommon changelog
 =================================
 
+1.1 - 18/08/2017
+----------------
+
+- Implemented SimpleConnectionPool
+
 1.0 - 17/08/2017
 ----------------
 

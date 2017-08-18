@@ -1,5 +1,11 @@
+import time
+from abc import abstractmethod
+from contextlib import contextmanager
 from datetime import datetime
 from functools import wraps
+from queue import Queue, Empty
+
+import logging
 from flask import request, Response
 
 try:
@@ -7,17 +13,22 @@ try:
 except ImportError:
     pass
 
+LOGGER = logging.getLogger('automation')
+
 
 def check_auth(username, password):
     """This function is called to check if a username password combination is valid."""
     return username == basic_auth_username and password == basic_auth_password
 
+
 def authenticate():
     """Sends a 401 response that enables basic auth"""
     return Response(
-    'Could not verify your access level for that URL.\n'
-    'You have to login with proper credentials', 401,
-    {'WWW-Authenticate': 'Basic realm="Login Required"'})
+        '''Could not verify your access level for that URL.
+        'You have to login with proper credentials''', 401,
+        {'WWW-Authenticate': 'Basic realm="Login Required"'}
+    )
+
 
 def requires_auth(f):
     @wraps(f)
@@ -27,6 +38,7 @@ def requires_auth(f):
             return authenticate()
         return f(*args, **kwargs)
     return decorated
+
 
 def json_serial(obj):
     """JSON serializer for objects not serializable by default json code"""
@@ -68,3 +80,48 @@ def dictionarize(cursor, page_size=None):
 
     return json_result
 
+
+class SimpleConnectionPool:
+    """
+    A simple connection pool that times out the connection after a specified time. No connections are pre-created -
+    they are only created when they are acquired. This solves a specific problem with cx_Oracle connections that hang
+    after a period of inactivity without the SessionPool dectecting they have hung.
+    """
+    def __init__(self, timeout=300):
+        """
+        Initialise queue
+        :param timeout: timeout for connection
+        """
+        self.queue = Queue()
+        self.timeout = timeout
+
+    @contextmanager
+    def acquire(self):
+        """
+        A factory method that acquires a connection from a queue. If no connections are found on the queue, a new
+        one is created. If a connection has timed out it is discarded.
+        """
+        now = time.time()
+        try:
+            while True:
+                wrapper = self.queue.get_nowait()
+                if wrapper['last_acquired'] + self.timeout > now:
+                    break
+                LOGGER.info('throwing away connection')
+        except Empty:
+            LOGGER.info('creating new connection')
+            wrapper = {
+                'conn': self.create()
+            }
+        try:
+            yield wrapper['conn']
+        finally:
+            wrapper['last_acquired'] = now
+            self.queue.put_nowait(wrapper)
+
+    @abstractmethod
+    def create(self):
+        """
+        A concrete method must be implemented to return a new connection.
+        """
+        pass
