@@ -13,7 +13,7 @@ setup(
     license='MIT',
     description='Common functionality across the different Flask microservices of the UofC UIS Automation team',
     long_description=open('README.rst').read(),
-    url='https://git.csx.cam.ac.uk/i/ucs/automation/flask-automation',
+    url='https://github.com/uisautomation/flask-automation.git',
     author='Automation team, University Information Services, University of Cambridge',
     author_email='automation@uis.cam.ac.uk',
     install_requires=[
